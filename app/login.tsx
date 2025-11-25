@@ -15,17 +15,34 @@ import {
     View,
 } from 'react-native';
 
+import { Alert } from 'react-native';
+import { auth } from '../lib/auth';
+
 export default function LoginScreen() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // TODO: Implement actual login logic
-        console.log('Login attempt:', { email, password });
-        // For demo purposes, just go back or to a dashboard
-        // router.replace('/dashboard'); 
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Error', 'Please enter both email and password');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await auth.signIn(email, password);
+            // Navigate to dashboard or home on success
+            // router.replace('/dashboard'); 
+            // For now, since we don't have a dashboard yet, maybe just alert success
+            Alert.alert('Success', 'Logged in successfully');
+        } catch (error: any) {
+            Alert.alert('Login Failed', error.message || 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -84,8 +101,12 @@ export default function LoginScreen() {
                             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                            <Text style={styles.loginButtonText}>Sign In</Text>
+                        <TouchableOpacity
+                            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                            onPress={handleLogin}
+                            disabled={loading}
+                        >
+                            <Text style={styles.loginButtonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.footer}>
@@ -194,6 +215,9 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
         marginBottom: 24,
+    },
+    loginButtonDisabled: {
+        opacity: 0.7,
     },
     loginButtonText: {
         color: '#FFFFFF',
