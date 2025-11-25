@@ -34,10 +34,9 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await auth.signIn(email, password);
-            // Navigate to dashboard or home on success
-            // router.replace('/dashboard'); 
-            // For now, since we don't have a dashboard yet, maybe just alert success
-            Alert.alert('Success', 'Logged in successfully');
+            // Navigate to dashboard on success
+            router.replace('/dashboard');
+            // Alert.alert('Success', 'Logged in successfully');
         } catch (error: any) {
             Alert.alert('Login Failed', error.message || 'An error occurred');
         } finally {
