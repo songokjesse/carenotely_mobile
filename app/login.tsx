@@ -40,7 +40,6 @@ export default function LoginScreen() {
                         <View style={styles.logoContainer}>
                             <Ionicons name="medical" size={48} color="#4F46E5" />
                         </View>
-                        <Text style={styles.title}>CareNotely</Text>
                         <Text style={styles.subtitle}>Sign in to continue to CareNotely</Text>
                     </View>
 
