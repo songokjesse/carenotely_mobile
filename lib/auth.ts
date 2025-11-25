@@ -2,7 +2,7 @@ import { saveToken } from './storage';
 
 // NOTE: Using the standard Better Auth endpoint structure as assumed in the plan.
 // If this is different, we will need to update it.
-const AUTH_URL = 'https://carenotely.vercel.app/api/auth';
+const AUTH_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth`;
 
 export const auth = {
     signIn: async (email: string, password: string) => {
@@ -11,6 +11,7 @@ export const auth = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Origin': process.env.EXPO_PUBLIC_API_URL || 'https://carenotely.vercel.app', // Required by Better Auth
                 },
                 body: JSON.stringify({ email, password }),
             });

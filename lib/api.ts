@@ -1,6 +1,6 @@
 import { getToken } from './storage';
 
-const BASE_URL = 'https://carenotely.vercel.app/api/mobile/v1';
+const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/v1`;
 
 interface RequestOptions extends RequestInit {
     headers?: Record<string, string>;
