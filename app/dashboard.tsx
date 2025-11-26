@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { deleteToken } from '../lib/storage';
+import { useAuth } from '../lib/auth-context';
 
 export default function Dashboard() {
     const router = useRouter();
+    const { signOut } = useAuth();
 
     const handleLogout = async () => {
-        await deleteToken();
+        await signOut();
         router.replace('/login');
     };
 

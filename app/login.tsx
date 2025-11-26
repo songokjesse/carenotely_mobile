@@ -16,10 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Alert } from 'react-native';
-import { auth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { signIn } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +34,7 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            await auth.signIn(email, password);
+            await signIn(email, password);
             // Navigate to dashboard on success
             router.replace('/dashboard');
             // Alert.alert('Success', 'Logged in successfully');
