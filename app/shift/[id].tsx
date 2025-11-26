@@ -21,12 +21,15 @@ import { BGLMonitoringForm } from '../../components/observations/bgl-monitoring-
 import { BowelMonitoringForm } from '../../components/observations/bowel-monitoring-form';
 import { FluidIntakeForm } from '../../components/observations/fluid-intake-form';
 import { SeizureMonitoringForm } from '../../components/observations/seizure-monitoring-form';
+import { ProgressNoteForm } from '../../components/progress-note-form';
+import { ProgressNotesTimeline } from '../../components/progress-notes-timeline';
 import { locationService } from '../../lib/location';
+import { notesService } from '../../lib/notes';
 import { getEnabledModules, ObservationModuleConfig } from '../../lib/observation-modules';
 import { observationsService } from '../../lib/observations';
 import { shiftUtils } from '../../lib/shift-utils';
 import { shiftService } from '../../lib/shifts';
-import { Observation, Shift } from '../../lib/types';
+import { Observation, ProgressNote, Shift } from '../../lib/types';
 
 const initialLayout = { width: Dimensions.get('window').width };
 
@@ -35,9 +38,11 @@ export default function ShiftDetailScreen() {
     const router = useRouter();
     const [shift, setShift] = useState<Shift | null>(null);
     const [observations, setObservations] = useState<Observation[]>([]);
+    const [progressNotes, setProgressNotes] = useState<ProgressNote[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isClocking, setIsClocking] = useState(false);
     const [isLoadingObservations, setIsLoadingObservations] = useState(false);
+    const [isLoadingNotes, setIsLoadingNotes] = useState(false);
 
     // Tab state
     const [index, setIndex] = useState(0);
@@ -49,6 +54,7 @@ export default function ShiftDetailScreen() {
 
     // Form modals
     const [selectedModule, setSelectedModule] = useState<ObservationModuleConfig | null>(null);
+    const [showNoteForm, setShowNoteForm] = useState(false);
 
     useEffect(() => {
         loadShift();
@@ -57,6 +63,9 @@ export default function ShiftDetailScreen() {
     useEffect(() => {
         if (shift && index === 1) {
             loadObservations();
+        }
+        if (shift && index === 2) {
+            loadProgressNotes();
         }
     }, [shift, index]);
 
@@ -82,6 +91,19 @@ export default function ShiftDetailScreen() {
             console.error('Failed to load observations:', error);
         } finally {
             setIsLoadingObservations(false);
+        }
+    };
+
+    const loadProgressNotes = async () => {
+        if (!shift) return;
+        setIsLoadingNotes(true);
+        try {
+            const data = await notesService.getProgressNotes(shift.id);
+            setProgressNotes(data);
+        } catch (error) {
+            console.error('Failed to load progress notes:', error);
+        } finally {
+            setIsLoadingNotes(false);
         }
     };
 
@@ -150,6 +172,12 @@ export default function ShiftDetailScreen() {
 
     const handleModulePress = (module: ObservationModuleConfig) => {
         setSelectedModule(module);
+    };
+
+    const handleNoteSubmit = async (data: any) => {
+        if (!shift) return;
+        await notesService.createProgressNote(shift.id, data);
+        await loadProgressNotes();
     };
 
     if (isLoading) {
@@ -335,11 +363,17 @@ export default function ShiftDetailScreen() {
 
     const NotesRoute = () => (
         <View style={styles.tabContent}>
-            <View style={styles.emptyState}>
-                <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
-                <Text style={styles.emptyTitle}>Progress Notes</Text>
-                <Text style={styles.emptyText}>Coming soon</Text>
-            </View>
+            <ProgressNotesTimeline
+                notes={progressNotes}
+                onRefresh={loadProgressNotes}
+                refreshing={isLoadingNotes}
+            />
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => setShowNoteForm(true)}
+            >
+                <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
         </View>
     );
 
@@ -421,6 +455,13 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                />
+            )}
+            {showNoteForm && (
+                <ProgressNoteForm
+                    visible={true}
+                    onClose={() => setShowNoteForm(false)}
+                    onSubmit={handleNoteSubmit}
                 />
             )}
         </SafeAreaView>
@@ -646,5 +687,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6B7280',
         textAlign: 'center',
+    },
+    fab: {
+        position: 'absolute',
+        right: 16,
+        bottom: 16,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#4F46E5',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
 });

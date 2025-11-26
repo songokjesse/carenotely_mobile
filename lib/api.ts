@@ -42,7 +42,14 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     }
 
     try {
-        const response = await fetch(`${BASE_URL}${endpoint}`, {
+        const url = `${BASE_URL}${endpoint}`;
+        console.log('🌐 API Request:', {
+            method: options.method || 'GET',
+            url,
+            hasToken: !!token,
+        });
+
+        const response = await fetch(url, {
             ...options,
             headers,
         });
@@ -50,6 +57,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         const data = await response.json();
 
         if (!response.ok) {
+            console.error('🌐 API Error:', {
+                status: response.status,
+                error: data.error,
+                code: data.code,
+            });
             throw new ApiError(
                 data.error || 'An error occurred',
                 response.status,
@@ -57,12 +69,23 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
             );
         }
 
+        console.log('🌐 API Success:', {
+            method: options.method || 'GET',
+            url,
+            status: response.status,
+        });
+
         return data;
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
         }
         // Network error or JSON parse error
+        console.error('🌐 Network Error:', {
+            endpoint,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            baseUrl: BASE_URL,
+        });
         throw new ApiError(
             'Network error. Please check your connection.',
             0
