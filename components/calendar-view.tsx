@@ -11,6 +11,15 @@ interface CalendarViewProps {
     onShiftPress?: (shift: Shift) => void;
 }
 
+/**
+ * Parse a date string in 'YYYY-MM-DD' format as a local date
+ * This prevents timezone conversion issues
+ */
+function parseLocalDate(dateString: string): Date {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
 export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [selectedDayShifts, setSelectedDayShifts] = useState<Shift[]>([]);
@@ -47,7 +56,11 @@ export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
         const loadDayShifts = async () => {
             setIsLoadingDay(true);
             try {
-                const dayShifts = await shiftService.getShiftsByDate(new Date(selectedDate));
+                console.log('📅 Loading shifts for date:', selectedDate);
+                const localDate = parseLocalDate(selectedDate);
+                console.log('📅 Parsed local date:', localDate);
+                const dayShifts = await shiftService.getShiftsByDate(localDate);
+                console.log('📅 Received shifts:', dayShifts.length, dayShifts);
                 setSelectedDayShifts(dayShifts);
             } catch (error) {
                 console.error('Failed to load day shifts', error);
@@ -96,7 +109,7 @@ export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
 
             <View style={styles.selectedDayHeader}>
                 <Text style={styles.selectedDayTitle}>
-                    {format(new Date(selectedDate), 'EEEE, MMMM d')}
+                    {format(parseLocalDate(selectedDate), 'EEEE, MMMM d')}
                 </Text>
                 {selectedDayShifts.length > 0 && (
                     <View style={styles.countBadge}>

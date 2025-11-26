@@ -21,8 +21,17 @@ interface BGLMonitoringFormProps {
 export function BGLMonitoringForm({ visible, onClose, onSubmit }: BGLMonitoringFormProps) {
     const [time, setTime] = useState(new Date());
     const [reading, setReading] = useState('');
+    const [context, setContext] = useState<string>('');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const contextOptions = [
+        { value: 'BEFORE_MEAL', label: 'Before Meal' },
+        { value: 'AFTER_MEAL', label: 'After Meal' },
+        { value: 'FASTING', label: 'Fasting' },
+        { value: 'BEDTIME', label: 'Bedtime' },
+        { value: 'OTHER', label: 'Other' },
+    ];
 
     const handleSubmit = async () => {
         if (!reading) {
@@ -43,12 +52,14 @@ export function BGLMonitoringForm({ visible, onClose, onSubmit }: BGLMonitoringF
                 data: {
                     time: time.toISOString(),
                     reading: readingNum,
+                    context,
                     notes,
                 },
                 recordedAt: time.toISOString(),
             });
             // Reset form
             setReading('');
+            setContext('');
             setNotes('');
             setTime(new Date());
             onClose();
@@ -105,6 +116,32 @@ export function BGLMonitoringForm({ visible, onClose, onSubmit }: BGLMonitoringF
                                 </Text>
                             </View>
                         )}
+                    </View>
+
+                    {/* Context */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Context (Optional)</Text>
+                        <View style={styles.optionsGrid}>
+                            {contextOptions.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.optionCard,
+                                        context === option.value && styles.optionCardSelected,
+                                    ]}
+                                    onPress={() => setContext(option.value)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.optionLabel,
+                                            context === option.value && styles.optionLabelSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
 
                     {/* Reference Ranges */}
@@ -223,6 +260,34 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    optionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    optionCard: {
+        minWidth: '30%',
+        backgroundColor: 'white',
+        padding: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        flexGrow: 1,
+    },
+    optionCardSelected: {
+        borderColor: '#EF4444',
+        backgroundColor: '#FEF2F2',
+    },
+    optionLabel: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    optionLabelSelected: {
+        color: '#EF4444',
     },
     referenceCard: {
         backgroundColor: 'white',

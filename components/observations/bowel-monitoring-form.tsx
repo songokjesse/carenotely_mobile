@@ -21,19 +21,31 @@ interface BowelMonitoringFormProps {
 export function BowelMonitoringForm({ visible, onClose, onSubmit }: BowelMonitoringFormProps) {
     const [time, setTime] = useState(new Date());
     const [consistency, setConsistency] = useState<string>('');
+    const [color, setColor] = useState<string>('');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const consistencyOptions = [
-        { value: 'NORMAL', label: 'Normal', icon: 'checkmark-circle' },
-        { value: 'SOFT', label: 'Soft', icon: 'water' },
-        { value: 'HARD', label: 'Hard', icon: 'square' },
-        { value: 'LOOSE', label: 'Loose', icon: 'warning' },
+        { value: 'TYPE_1', label: 'Type 1', description: 'Separate hard lumps, like nuts (hard to pass)' },
+        { value: 'TYPE_2', label: 'Type 2', description: 'Sausage-shaped but lumpy' },
+        { value: 'TYPE_3', label: 'Type 3', description: 'Like a sausage but with cracks on surface' },
+        { value: 'TYPE_4', label: 'Type 4', description: 'Like a sausage or snake, smooth and soft' },
+        { value: 'TYPE_5', label: 'Type 5', description: 'Soft blobs with clear-cut edges' },
+        { value: 'TYPE_6', label: 'Type 6', description: 'Fluffy pieces with ragged edges, a mushy stool' },
+        { value: 'TYPE_7', label: 'Type 7', description: 'Watery, no solid pieces' },
+    ];
+
+    const colorOptions = [
+        { value: 'BROWN', label: 'Brown', color: '#8B4513' },
+        { value: 'YELLOW', label: 'Yellow', color: '#F59E0B' },
+        { value: 'GREEN', label: 'Green', color: '#10B981' },
+        { value: 'BLACK', label: 'Black', color: '#1F2937' },
+        { value: 'RED', label: 'Red', color: '#EF4444' },
     ];
 
     const handleSubmit = async () => {
-        if (!consistency) {
-            Alert.alert('Required', 'Please select consistency');
+        if (!consistency || !color) {
+            Alert.alert('Required', 'Please select consistency and color');
             return;
         }
 
@@ -44,12 +56,14 @@ export function BowelMonitoringForm({ visible, onClose, onSubmit }: BowelMonitor
                 data: {
                     time: time.toISOString(),
                     consistency,
+                    color,
                     notes,
                 },
                 recordedAt: time.toISOString(),
             });
             // Reset form
             setConsistency('');
+            setColor('');
             setNotes('');
             setTime(new Date());
             onClose();
@@ -82,25 +96,58 @@ export function BowelMonitoringForm({ visible, onClose, onSubmit }: BowelMonitor
                     {/* Consistency */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Consistency *</Text>
-                        <View style={styles.optionsGrid}>
+                        <View style={styles.optionsList}>
                             {consistencyOptions.map((option) => (
                                 <TouchableOpacity
                                     key={option.value}
                                     style={[
-                                        styles.optionCard,
-                                        consistency === option.value && styles.optionCardSelected,
+                                        styles.optionRow,
+                                        consistency === option.value && styles.optionRowSelected,
                                     ]}
                                     onPress={() => setConsistency(option.value)}
                                 >
-                                    <Ionicons
-                                        name={option.icon as any}
-                                        size={24}
-                                        color={consistency === option.value ? '#8B5CF6' : '#6B7280'}
+                                    <View style={styles.optionTextContainer}>
+                                        <Text
+                                            style={[
+                                                styles.optionLabel,
+                                                consistency === option.value && styles.optionLabelSelected,
+                                            ]}
+                                        >
+                                            {option.label}
+                                        </Text>
+                                        <Text style={styles.optionDescription}>{option.description}</Text>
+                                    </View>
+                                    {consistency === option.value && (
+                                        <Ionicons name="checkmark-circle" size={24} color="#8B5CF6" />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Color */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Color *</Text>
+                        <View style={styles.optionsGrid}>
+                            {colorOptions.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.optionCard,
+                                        color === option.value && styles.optionCardSelected,
+                                    ]}
+                                    onPress={() => setColor(option.value)}
+                                >
+                                    <View
+                                        style={[
+                                            styles.colorSwatch,
+                                            { backgroundColor: option.color },
+                                        ]}
                                     />
                                     <Text
                                         style={[
                                             styles.optionLabel,
-                                            consistency === option.value && styles.optionLabelSelected,
+                                            color === option.value && styles.optionLabelSelected,
                                         ]}
                                     >
                                         {option.label}
@@ -206,15 +253,46 @@ const styles = StyleSheet.create({
         borderColor: '#8B5CF6',
         backgroundColor: '#F3E8FF',
     },
+    optionsList: {
+        gap: 12,
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'white',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+    },
+    optionRowSelected: {
+        borderColor: '#8B5CF6',
+        backgroundColor: '#F3E8FF',
+    },
+    optionTextContainer: {
+        flex: 1,
+        marginRight: 12,
+    },
     optionLabel: {
+        fontSize: 16,
+        color: '#374151',
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    optionDescription: {
         fontSize: 14,
         color: '#6B7280',
-        marginTop: 8,
-        fontWeight: '500',
     },
     optionLabelSelected: {
         color: '#8B5CF6',
-        fontWeight: '600',
+    },
+    colorSwatch: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
     },
     textArea: {
         backgroundColor: 'white',

@@ -44,6 +44,11 @@ export function ObservationTimeline({ observations, onRefresh, refreshing }: Obs
                 return (
                     <Text style={styles.dataText}>
                         Consistency: <Text style={styles.dataValue}>{data.consistency}</Text>
+                        {data.color && (
+                            <>
+                                {' • '}Color: <Text style={styles.dataValue}>{data.color}</Text>
+                            </>
+                        )}
                         {data.notes && `\n${data.notes}`}
                     </Text>
                 );
@@ -59,6 +64,26 @@ export function ObservationTimeline({ observations, onRefresh, refreshing }: Obs
                     <Text style={styles.dataText}>
                         Reading: <Text style={styles.dataValue}>{data.reading} mmol/L</Text>
                         {data.notes && `\n${data.notes}`}
+                    </Text>
+                );
+            case 'SEIZURE_MONITORING':
+                return (
+                    <Text style={styles.dataText}>
+                        Duration: <Text style={styles.dataValue}>{data.duration} min</Text>
+                        {' • '}Severity: <Text style={styles.dataValue}>{data.severity}</Text>
+                        {data.description && `\n${data.description}`}
+                    </Text>
+                );
+            case 'BEHAVIOUR_OBSERVATION':
+                return (
+                    <Text style={styles.dataText}>
+                        Mood: <Text style={styles.dataValue}>{data.mood}</Text>
+                        {data.incidents && data.incidents.length > 0 && (
+                            <>
+                                {'\n'}Incidents: <Text style={styles.dataValue}>{data.incidents.join(', ')}</Text>
+                            </>
+                        )}
+                        {data.description && `\n${data.description}`}
                     </Text>
                 );
             default:
