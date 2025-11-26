@@ -16,11 +16,16 @@ export function ShiftCard({ shift, onPress }: ShiftCardProps) {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'in-progress': return '#10B981'; // Green
-            case 'completed': return '#6B7280'; // Gray
-            case 'cancelled': return '#EF4444'; // Red
-            default: return '#4F46E5'; // Indigo (Scheduled)
+            case 'IN_PROGRESS': return '#10B981'; // Green
+            case 'COMPLETED': return '#6B7280'; // Gray
+            case 'CANCELLED': return '#EF4444'; // Red
+            case 'NO_SHOW': return '#F59E0B'; // Amber
+            default: return '#4F46E5'; // Indigo (PLANNED)
         }
+    };
+
+    const getStatusLabel = (status: string) => {
+        return status.replace('_', ' ');
     };
 
     return (
@@ -33,12 +38,12 @@ export function ShiftCard({ shift, onPress }: ShiftCardProps) {
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status) + '20' }]}>
                         <Text style={[styles.statusText, { color: getStatusColor(shift.status) }]}>
-                            {shift.status.replace('-', ' ').toUpperCase()}
+                            {getStatusLabel(shift.status)}
                         </Text>
                     </View>
                 </View>
 
-                <Text style={styles.clientName}>{shift.clientName}</Text>
+                <Text style={styles.clientName}>{shift.client.name}</Text>
 
                 <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#6B7280" />

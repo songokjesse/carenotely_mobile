@@ -28,7 +28,10 @@ export default function Dashboard() {
         try {
             const today = startOfDay(new Date());
             const endDate = endOfDay(addDays(today, 30));
-            const data = await shiftService.getShifts(today, endDate);
+            const data = await shiftService.getShifts({
+                startDate: today,
+                endDate: endDate,
+            });
             setShifts(data);
         } catch (error) {
             Alert.alert('Error', 'Failed to load shifts');
@@ -43,7 +46,7 @@ export default function Dashboard() {
     };
 
     const handleShiftPress = (shift: Shift) => {
-        Alert.alert('Shift Details', `${shift.clientName}\n${shift.location}`);
+        Alert.alert('Shift Details', `${shift.client.name}\n${shift.location}`);
     };
 
     return (

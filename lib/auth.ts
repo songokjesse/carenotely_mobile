@@ -1,8 +1,28 @@
 import { saveToken } from './storage';
 
-// NOTE: Using the standard Better Auth endpoint structure as assumed in the plan.
-// If this is different, we will need to update it.
 const AUTH_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth`;
+
+// Extract session token from Set-Cookie header
+function extractSessionToken(headers: Headers): string | null {
+    const setCookie = headers.get('set-cookie');
+    if (!setCookie) return null;
+
+    // Better Auth typically sets a cookie named 'better-auth.session_token' or similar
+    // Parse the Set-Cookie header to extract the token value
+    const cookies = setCookie.split(',').map(c => c.trim());
+
+    for (const cookie of cookies) {
+        // Look for session token cookie
+        const match = cookie.match(/better-auth\.session_token=([^;]+)/i) ||
+            cookie.match(/session[_-]?token=([^;]+)/i);
+        if (match && match[1]) {
+            // URL-decode the token (cookies are URL-encoded)
+            return decodeURIComponent(match[1]);
+        }
+    }
+
+    return null;
+}
 
 export const auth = {
     signIn: async (email: string, password: string) => {
@@ -11,38 +31,42 @@ export const auth = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Origin': process.env.EXPO_PUBLIC_API_URL || 'https://carenotely.vercel.app', // Required by Better Auth
+                    'Origin': process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
                 },
                 body: JSON.stringify({ email, password }),
             });
 
             const data = await response.json();
 
+            console.log('Login response status:', response.status);
+            console.log('Login response data:', JSON.stringify(data, null, 2));
+            console.log('Response headers:', {
+                setCookie: response.headers.get('set-cookie'),
+            });
+
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to sign in');
+                throw new Error(data.message || data.error || 'Failed to sign in');
             }
 
-            // Better Auth usually returns the session in the response or sets a cookie.
-            // For mobile, we might need to handle this differently if it relies on cookies.
-            // However, the user documentation says: "The session token is obtained from Better Auth after successful login."
-            // Let's assume the response contains the token or session object with a token.
+            // IMPORTANT: Prioritize the full signed token from cookies
+            // The cookie contains the complete token with signature, while the body only has the token ID
+            let token = extractSessionToken(response.headers);
+            console.log('Token from cookie:', token);
 
-            // Inspecting the likely response structure for Better Auth:
-            // It often returns { user: ..., session: { token: ... } }
+            // Fallback to body token if cookie extraction fails
+            if (!token) {
+                token = data.token || data.session?.token;
+                console.log('Token from body (fallback):', token);
+            }
 
-            if (data.token) {
-                await saveToken(data.token);
-                return data;
-            } else if (data.session && data.session.token) {
-                await saveToken(data.session.token);
-                return data;
+            if (token) {
+                console.log('Saving token:', token.substring(0, 30) + '...');
+                await saveToken(token);
+                return { ...data, token };
             } else {
-                // Fallback: check headers if token is not in body? 
-                // Or maybe we need to use the `better-auth/client` if possible, but we are in React Native.
-                // For now, let's assume it's in the body as `token` or `session.token`.
-                console.warn('Token not found in response, checking for other fields', data);
-                // If we can't find it, we might still return success but subsequent requests might fail.
-                return data;
+                console.error('Login response:', data);
+                console.error('Could not find token in body or cookies');
+                throw new Error('No session token received from server. Please check your backend configuration.');
             }
 
         } catch (error) {

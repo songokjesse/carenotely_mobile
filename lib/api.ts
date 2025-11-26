@@ -6,6 +6,26 @@ interface RequestOptions extends RequestInit {
     headers?: Record<string, string>;
 }
 
+export class ApiError extends Error {
+    code?: string;
+    statusCode: number;
+
+    constructor(message: string, statusCode: number, code?: string) {
+        super(message);
+        this.name = 'ApiError';
+        this.statusCode = statusCode;
+        this.code = code;
+
+        // Maintains proper stack trace for where our error was thrown (only available on V8)
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, ApiError);
+        }
+
+        // Set the prototype explicitly to fix instanceof checks
+        Object.setPrototypeOf(this, ApiError.prototype);
+    }
+}
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const token = await getToken();
 
@@ -18,18 +38,33 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
+    try {
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!response.ok) {
-        throw new Error(data.error || 'An error occurred');
+        if (!response.ok) {
+            throw new ApiError(
+                data.error || 'An error occurred',
+                response.status,
+                data.code
+            );
+        }
+
+        return data;
+    } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        // Network error or JSON parse error
+        throw new ApiError(
+            'Network error. Please check your connection.',
+            0
+        );
     }
-
-    return data;
 }
 
 export const api = {
