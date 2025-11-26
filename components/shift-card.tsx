@@ -32,6 +32,13 @@ export function ShiftCard({ shift, onPress }: ShiftCardProps) {
         <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
             <View style={styles.leftStrip} />
             <View style={styles.content}>
+                <View style={styles.dateRow}>
+                    <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+                    <Text style={styles.date}>
+                        {format(startTime, 'EEEE, MMM d, yyyy')}
+                    </Text>
+                </View>
+
                 <View style={styles.header}>
                     <Text style={styles.time}>
                         {format(startTime, 'h:mm a')} - {format(endTime, 'h:mm a')}
@@ -83,6 +90,17 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 16,
+    },
+    dateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 6,
+    },
+    date: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
     },
     header: {
         flexDirection: 'row',
