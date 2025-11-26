@@ -1,8 +1,7 @@
-import { format } from 'date-fns';
+import { endOfDay, format, startOfDay } from 'date-fns';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { shiftService } from '../lib/shifts';
 import { Shift } from '../lib/types';
 import { ShiftCard } from './shift-card';
 
@@ -23,7 +22,6 @@ function parseLocalDate(dateString: string): Date {
 export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [selectedDayShifts, setSelectedDayShifts] = useState<Shift[]>([]);
-    const [isLoadingDay, setIsLoadingDay] = useState(false);
 
     // Create marked dates object for the calendar
     const markedDates = React.useMemo(() => {
@@ -53,24 +51,26 @@ export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
 
     // Load shifts for selected day
     useEffect(() => {
-        const loadDayShifts = async () => {
-            setIsLoadingDay(true);
-            try {
-                console.log('📅 Loading shifts for date:', selectedDate);
-                const localDate = parseLocalDate(selectedDate);
-                console.log('📅 Parsed local date:', localDate);
-                const dayShifts = await shiftService.getShiftsByDate(localDate);
-                console.log('📅 Received shifts:', dayShifts.length, dayShifts);
-                setSelectedDayShifts(dayShifts);
-            } catch (error) {
-                console.error('Failed to load day shifts', error);
-            } finally {
-                setIsLoadingDay(false);
-            }
-        };
+        // Filter shifts from the already-loaded shifts prop instead of making API calls
+        const localDate = parseLocalDate(selectedDate);
+        const dayStart = startOfDay(localDate);
+        const dayEnd = endOfDay(localDate);
 
-        loadDayShifts();
-    }, [selectedDate]);
+        const filtered = shifts.filter(shift => {
+            const shiftStart = new Date(shift.startTime);
+            const shiftEnd = new Date(shift.endTime);
+            const shiftStartDate = format(shiftStart, 'yyyy-MM-dd');
+            const selectedDateStr = format(localDate, 'yyyy-MM-dd');
+
+            const matchesStartDate = shiftStartDate === selectedDateStr;
+            const spansDate = shiftStart <= dayEnd && shiftEnd >= dayStart;
+            const included = matchesStartDate || spansDate;
+
+            return included;
+        });
+
+        setSelectedDayShifts(filtered);
+    }, [selectedDate, shifts]);
 
     const handleDayPress = (day: DateData) => {
         setSelectedDate(day.dateString);
@@ -119,11 +119,7 @@ export function CalendarView({ shifts, onShiftPress }: CalendarViewProps) {
             </View>
 
             <ScrollView style={styles.shiftsContainer} showsVerticalScrollIndicator={false}>
-                {isLoadingDay ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#4F46E5" />
-                    </View>
-                ) : selectedDayShifts.length > 0 ? (
+                {selectedDayShifts.length > 0 ? (
                     selectedDayShifts.map(shift => (
                         <ShiftCard key={shift.id} shift={shift} onPress={() => onShiftPress?.(shift)} />
                     ))
