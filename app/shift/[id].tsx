@@ -152,7 +152,16 @@ export default function ShiftDetailScreen() {
                             const location = await locationService.getCurrentLocation();
                             const updatedShift = await shiftService.clockOut(shift.id, location);
                             setShift(updatedShift);
-                            Alert.alert('Success', 'Clocked out successfully!');
+                            Alert.alert(
+                                'Success',
+                                'Clocked out successfully!',
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => router.replace('/dashboard'),
+                                    },
+                                ]
+                            );
                         } catch (error: any) {
                             Alert.alert('Clock Out Failed', error.message || 'An error occurred');
                         } finally {
@@ -171,6 +180,10 @@ export default function ShiftDetailScreen() {
     };
 
     const handleModulePress = (module: ObservationModuleConfig) => {
+        if (!shift?.clockInTime) {
+            Alert.alert('Clock In Required', 'You must clock in before adding observations.');
+            return;
+        }
         setSelectedModule(module);
     };
 
@@ -369,8 +382,14 @@ export default function ShiftDetailScreen() {
                 refreshing={isLoadingNotes}
             />
             <TouchableOpacity
-                style={styles.fab}
-                onPress={() => setShowNoteForm(true)}
+                style={[styles.fab, !shift?.clockInTime && { opacity: 0.5, backgroundColor: '#9CA3AF' }]}
+                onPress={() => {
+                    if (!shift?.clockInTime) {
+                        Alert.alert('Clock In Required', 'You must clock in before adding progress notes.');
+                        return;
+                    }
+                    setShowNoteForm(true);
+                }}
             >
                 <Ionicons name="add" size={24} color="white" />
             </TouchableOpacity>
