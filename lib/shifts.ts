@@ -44,8 +44,12 @@ export const shiftService = {
         const query = queryParams.toString();
         const endpoint = query ? `/shifts?${query}` : '/shifts';
 
-        const response = await api.get<ShiftsResponse>(endpoint);
-        return response.shifts;
+        try {
+            const response = await api.get<ShiftsResponse>(endpoint);
+            return response.shifts;
+        } catch (error) {
+            throw error;
+        }
     },
 
     /**

@@ -38,12 +38,6 @@ export const auth = {
 
             const data = await response.json();
 
-            console.log('Login response status:', response.status);
-            console.log('Login response data:', JSON.stringify(data, null, 2));
-            console.log('Response headers:', {
-                setCookie: response.headers.get('set-cookie'),
-            });
-
             if (!response.ok) {
                 throw new Error(data.message || data.error || 'Failed to sign in');
             }
@@ -51,21 +45,16 @@ export const auth = {
             // IMPORTANT: Prioritize the full signed token from cookies
             // The cookie contains the complete token with signature, while the body only has the token ID
             let token = extractSessionToken(response.headers);
-            console.log('Token from cookie:', token);
 
             // Fallback to body token if cookie extraction fails
             if (!token) {
                 token = data.token || data.session?.token;
-                console.log('Token from body (fallback):', token);
             }
 
             if (token) {
-                console.log('Saving token:', token.substring(0, 30) + '...');
                 await saveToken(token);
                 return { ...data, token };
             } else {
-                console.error('Login response:', data);
-                console.error('Could not find token in body or cookies');
                 throw new Error('No session token received from server. Please check your backend configuration.');
             }
 

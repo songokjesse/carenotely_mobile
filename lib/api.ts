@@ -34,7 +34,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         ...options.headers,
     };
 
+    // Better Auth expects the session token as a cookie, not a Bearer token
     if (token) {
+        // Send as both Cookie and Authorization for compatibility
+        headers['Cookie'] = `__Secure-better-auth.session_token=${encodeURIComponent(token)}`;
         headers['Authorization'] = `Bearer ${token}`;
     }
 
