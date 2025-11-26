@@ -1,0 +1,650 @@
+import { Ionicons } from '@expo/vector-icons';
+import { differenceInHours, format } from 'date-fns';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
+import { ObservationGrid } from '../../components/observation-grid';
+import { ObservationTimeline } from '../../components/observation-timeline';
+import { BehaviourObservationForm } from '../../components/observations/behaviour-observation-form';
+import { BGLMonitoringForm } from '../../components/observations/bgl-monitoring-form';
+import { BowelMonitoringForm } from '../../components/observations/bowel-monitoring-form';
+import { FluidIntakeForm } from '../../components/observations/fluid-intake-form';
+import { SeizureMonitoringForm } from '../../components/observations/seizure-monitoring-form';
+import { locationService } from '../../lib/location';
+import { getEnabledModules, ObservationModuleConfig } from '../../lib/observation-modules';
+import { observationsService } from '../../lib/observations';
+import { shiftUtils } from '../../lib/shift-utils';
+import { shiftService } from '../../lib/shifts';
+import { Observation, Shift } from '../../lib/types';
+
+const initialLayout = { width: Dimensions.get('window').width };
+
+export default function ShiftDetailScreen() {
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const router = useRouter();
+    const [shift, setShift] = useState<Shift | null>(null);
+    const [observations, setObservations] = useState<Observation[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isClocking, setIsClocking] = useState(false);
+    const [isLoadingObservations, setIsLoadingObservations] = useState(false);
+
+    // Tab state
+    const [index, setIndex] = useState(0);
+    const [routes] = useState([
+        { key: 'overview', title: 'Overview' },
+        { key: 'observations', title: 'Observations' },
+        { key: 'notes', title: 'Notes' },
+    ]);
+
+    // Form modals
+    const [selectedModule, setSelectedModule] = useState<ObservationModuleConfig | null>(null);
+
+    useEffect(() => {
+        loadShift();
+    }, [id]);
+
+    useEffect(() => {
+        if (shift && index === 1) {
+            loadObservations();
+        }
+    }, [shift, index]);
+
+    const loadShift = async () => {
+        try {
+            const data = await shiftService.getShiftDetails(id);
+            setShift(data);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to load shift details');
+            router.back();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadObservations = async () => {
+        if (!shift) return;
+        setIsLoadingObservations(true);
+        try {
+            const data = await observationsService.getObservations(shift.id);
+            setObservations(data);
+        } catch (error) {
+            console.error('Failed to load observations:', error);
+        } finally {
+            setIsLoadingObservations(false);
+        }
+    };
+
+    const handleClockIn = async () => {
+        if (!shift) return;
+
+        const { canClock, reason } = shiftUtils.canClockIn(shift);
+        if (!canClock) {
+            Alert.alert('Cannot Clock In', reason);
+            return;
+        }
+
+        setIsClocking(true);
+        try {
+            const location = await locationService.getCurrentLocation();
+            const updatedShift = await shiftService.clockIn(shift.id, location);
+            setShift(updatedShift);
+            Alert.alert('Success', 'Clocked in successfully!');
+        } catch (error: any) {
+            Alert.alert('Clock In Failed', error.message || 'An error occurred');
+        } finally {
+            setIsClocking(false);
+        }
+    };
+
+    const handleClockOut = async () => {
+        if (!shift) return;
+
+        const { canClock, reason } = shiftUtils.canClockOut(shift);
+        if (!canClock) {
+            Alert.alert('Cannot Clock Out', reason);
+            return;
+        }
+
+        Alert.alert(
+            'Clock Out',
+            'Are you sure you want to clock out?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clock Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setIsClocking(true);
+                        try {
+                            const location = await locationService.getCurrentLocation();
+                            const updatedShift = await shiftService.clockOut(shift.id, location);
+                            setShift(updatedShift);
+                            Alert.alert('Success', 'Clocked out successfully!');
+                        } catch (error: any) {
+                            Alert.alert('Clock Out Failed', error.message || 'An error occurred');
+                        } finally {
+                            setIsClocking(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleObservationSubmit = async (data: any) => {
+        if (!shift) return;
+        await observationsService.createObservation(shift.id, data);
+        await loadObservations();
+    };
+
+    const handleModulePress = (module: ObservationModuleConfig) => {
+        setSelectedModule(module);
+    };
+
+    if (isLoading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#4F46E5" />
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (!shift) {
+        return null;
+    }
+
+    const startTime = shift.startTime ? new Date(shift.startTime) : null;
+    const endTime = shift.endTime ? new Date(shift.endTime) : null;
+
+    if (!startTime || !endTime || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <Text>Invalid shift data</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    const statusInfo = shiftUtils.getShiftStatusInfo(shift);
+    const duration = differenceInHours(endTime, startTime);
+    const clockInCheck = shiftUtils.canClockIn(shift);
+    const clockOutCheck = shiftUtils.canClockOut(shift);
+    const enabledModules = getEnabledModules(shift.client.enabledModules);
+
+    // Tab scenes
+    const OverviewRoute = () => (
+        <ScrollView style={styles.tabContent}>
+            {/* Date & Time */}
+            <View style={styles.section}>
+                <View style={styles.dateTimeCard}>
+                    <Ionicons name="calendar" size={24} color="#4F46E5" />
+                    <View style={styles.dateTimeInfo}>
+                        <Text style={styles.dateText}>
+                            {format(startTime, 'EEEE, MMMM d, yyyy')}
+                        </Text>
+                        <Text style={styles.timeText}>
+                            {format(startTime, 'h:mm a')} - {format(endTime, 'h:mm a')}
+                        </Text>
+                        <Text style={styles.durationText}>{duration} hours</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Client Info */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Client</Text>
+                <View style={styles.card}>
+                    <Text style={styles.clientName}>{shift.client.name}</Text>
+                    {shift.client.ndisNumber && (
+                        <Text style={styles.ndisNumber}>NDIS: {shift.client.ndisNumber}</Text>
+                    )}
+                </View>
+            </View>
+
+            {/* Location */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Location</Text>
+                <View style={styles.card}>
+                    <View style={styles.row}>
+                        <Ionicons name="location" size={20} color="#4F46E5" />
+                        <Text style={styles.locationText}>{shift.location}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Service Type */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Service</Text>
+                <View style={styles.card}>
+                    <View style={styles.row}>
+                        <Ionicons name="medical" size={20} color="#4F46E5" />
+                        <Text style={styles.serviceText}>{shift.serviceType}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Clock In/Out Times */}
+            {(shift.clockInTime || shift.clockOutTime) && (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Time Tracking</Text>
+                    <View style={styles.card}>
+                        {shift.clockInTime && (
+                            <View style={styles.timeRow}>
+                                <Ionicons name="log-in" size={20} color="#10B981" />
+                                <View style={styles.timeInfo}>
+                                    <Text style={styles.timeLabel}>Clocked In</Text>
+                                    <Text style={styles.timeValue}>
+                                        {format(new Date(shift.clockInTime), 'h:mm a')}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                        {shift.clockOutTime && (
+                            <View style={[styles.timeRow, { marginTop: 12 }]}>
+                                <Ionicons name="log-out" size={20} color="#EF4444" />
+                                <View style={styles.timeInfo}>
+                                    <Text style={styles.timeLabel}>Clocked Out</Text>
+                                    <Text style={styles.timeValue}>
+                                        {format(new Date(shift.clockOutTime), 'h:mm a')}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            )}
+
+            {/* Clock In/Out Buttons */}
+            <View style={styles.actionSection}>
+                {!shift.clockInTime && (
+                    <TouchableOpacity
+                        style={[
+                            styles.clockButton,
+                            styles.clockInButton,
+                            !clockInCheck.canClock && styles.disabledButton,
+                        ]}
+                        onPress={handleClockIn}
+                        disabled={!clockInCheck.canClock || isClocking}
+                    >
+                        {isClocking ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <>
+                                <Ionicons name="log-in" size={24} color="white" />
+                                <Text style={styles.clockButtonText}>Clock In</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
+
+                {shift.clockInTime && !shift.clockOutTime && (
+                    <TouchableOpacity
+                        style={[
+                            styles.clockButton,
+                            styles.clockOutButton,
+                            !clockOutCheck.canClock && styles.disabledButton,
+                        ]}
+                        onPress={handleClockOut}
+                        disabled={!clockOutCheck.canClock || isClocking}
+                    >
+                        {isClocking ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <>
+                                <Ionicons name="log-out" size={24} color="white" />
+                                <Text style={styles.clockButtonText}>Clock Out</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
+
+                {!clockInCheck.canClock && !shift.clockInTime && (
+                    <Text style={styles.helperText}>{clockInCheck.reason}</Text>
+                )}
+            </View>
+        </ScrollView>
+    );
+
+    const ObservationsRoute = () => (
+        <View style={styles.tabContent}>
+            <ObservationGrid modules={enabledModules} onModulePress={handleModulePress} />
+            <View style={styles.timelineDivider}>
+                <Text style={styles.timelineTitle}>Recent Observations</Text>
+            </View>
+            <ObservationTimeline
+                observations={observations}
+                onRefresh={loadObservations}
+                refreshing={isLoadingObservations}
+            />
+        </View>
+    );
+
+    const NotesRoute = () => (
+        <View style={styles.tabContent}>
+            <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyTitle}>Progress Notes</Text>
+                <Text style={styles.emptyText}>Coming soon</Text>
+            </View>
+        </View>
+    );
+
+    const renderScene = SceneMap({
+        overview: OverviewRoute,
+        observations: ObservationsRoute,
+        notes: NotesRoute,
+    });
+
+    return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#111827" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Shift Details</Text>
+                <View style={{ width: 24 }} />
+            </View>
+
+            {/* Status Badge */}
+            <View style={styles.statusContainer}>
+                <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
+                    <Ionicons name={statusInfo.icon as any} size={16} color={statusInfo.color} />
+                    <Text style={[styles.statusText, { color: statusInfo.color }]}>
+                        {statusInfo.label}
+                    </Text>
+                </View>
+            </View>
+
+            {/* Tabs */}
+            <TabView
+                navigationState={{ index, routes }}
+                renderScene={renderScene}
+                onIndexChange={setIndex}
+                initialLayout={initialLayout}
+                renderTabBar={(props) => (
+                    <TabBar
+                        {...props}
+                        indicatorStyle={styles.tabIndicator}
+                        style={styles.tabBar}
+                        activeColor="#4F46E5"
+                        inactiveColor="#6B7280"
+                    />
+                )}
+            />
+
+            {/* Observation Forms */}
+            {selectedModule?.type === 'BOWEL_MONITORING' && (
+                <BowelMonitoringForm
+                    visible={true}
+                    onClose={() => setSelectedModule(null)}
+                    onSubmit={handleObservationSubmit}
+                />
+            )}
+            {selectedModule?.type === 'FLUID_INTAKE' && (
+                <FluidIntakeForm
+                    visible={true}
+                    onClose={() => setSelectedModule(null)}
+                    onSubmit={handleObservationSubmit}
+                />
+            )}
+            {selectedModule?.type === 'BGL_MONITORING' && (
+                <BGLMonitoringForm
+                    visible={true}
+                    onClose={() => setSelectedModule(null)}
+                    onSubmit={handleObservationSubmit}
+                />
+            )}
+            {selectedModule?.type === 'SEIZURE_MONITORING' && (
+                <SeizureMonitoringForm
+                    visible={true}
+                    onClose={() => setSelectedModule(null)}
+                    onSubmit={handleObservationSubmit}
+                />
+            )}
+            {selectedModule?.type === 'BEHAVIOUR_OBSERVATION' && (
+                <BehaviourObservationForm
+                    visible={true}
+                    onClose={() => setSelectedModule(null)}
+                    onSubmit={handleObservationSubmit}
+                />
+            )}
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    backButton: {
+        padding: 4,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    statusContainer: {
+        alignItems: 'center',
+        paddingVertical: 16,
+        backgroundColor: 'white',
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+    },
+    statusText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    tabBar: {
+        backgroundColor: 'white',
+    },
+    tabIndicator: {
+        backgroundColor: '#4F46E5',
+    },
+    tabLabel: {
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    tabContent: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    section: {
+        paddingHorizontal: 16,
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        marginBottom: 8,
+        letterSpacing: 0.5,
+    },
+    card: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    dateTimeCard: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    dateTimeInfo: {
+        flex: 1,
+    },
+    dateText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    timeText: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    durationText: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    clientName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    ndisNumber: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    locationText: {
+        fontSize: 14,
+        color: '#374151',
+        flex: 1,
+    },
+    serviceText: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    timeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    timeInfo: {
+        flex: 1,
+    },
+    timeLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    timeValue: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    actionSection: {
+        paddingHorizontal: 16,
+        paddingVertical: 24,
+    },
+    clockButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: 12,
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    clockInButton: {
+        backgroundColor: '#10B981',
+    },
+    clockOutButton: {
+        backgroundColor: '#EF4444',
+    },
+    disabledButton: {
+        opacity: 0.5,
+    },
+    clockButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    helperText: {
+        textAlign: 'center',
+        marginTop: 12,
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    timelineDivider: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F3F4F6',
+    },
+    timelineTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#374151',
+    },
+    emptyState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#374151',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+});

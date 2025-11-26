@@ -46,7 +46,7 @@ export default function Dashboard() {
     };
 
     const handleShiftPress = (shift: Shift) => {
-        Alert.alert('Shift Details', `${shift.client.name}\n${shift.location}`);
+        router.push(`/shift/${shift.id}`);
     };
 
     return (
