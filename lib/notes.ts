@@ -35,10 +35,15 @@ export const notesService = {
     },
 
     /**
-     * Rephrase note text using AI
+     * Rephrase note text using AI with privacy protection
      */
     rephraseNote: async (text: string): Promise<string> => {
-        const response = await api.post<{ rephrasedText: string }>('/ai/rephrase', { text });
-        return response.rephrasedText;
+        const { safeRephrase } = await import('./privacy-redactor');
+
+        // Use safeRephrase to automatically redact PII before sending to AI
+        return safeRephrase(text, async (redactedText) => {
+            const response = await api.post<{ rephrasedText: string }>('/ai/rephrase', { text: redactedText });
+            return response.rephrasedText;
+        });
     },
 };
