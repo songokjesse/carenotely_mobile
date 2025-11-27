@@ -33,4 +33,12 @@ export const notesService = {
         const response = await api.post<NoteResponse>(`/shifts/${shiftId}/notes`, data);
         return response.note;
     },
+
+    /**
+     * Rephrase note text using AI
+     */
+    rephraseNote: async (text: string): Promise<string> => {
+        const response = await api.post<{ rephrasedText: string }>('/ai/rephrase', { text });
+        return response.rephrasedText;
+    },
 };

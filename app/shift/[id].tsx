@@ -72,6 +72,13 @@ export default function ShiftDetailScreen() {
     const loadShift = async () => {
         try {
             const data = await shiftService.getShiftDetails(id);
+            console.log('📋 Shift loaded:', {
+                id: data.id,
+                startTime: data.startTime,
+                endTime: data.endTime,
+                clockInTime: data.clockInTime,
+                hasClient: !!data.client,
+            });
             setShift(data);
         } catch (error) {
             Alert.alert('Error', 'Failed to load shift details');
@@ -120,6 +127,16 @@ export default function ShiftDetailScreen() {
         try {
             const location = await locationService.getCurrentLocation();
             const updatedShift = await shiftService.clockIn(shift.id, location);
+
+            // Diagnostic logging to identify data issues
+            console.log('📍 Clock-in response:', {
+                id: updatedShift.id,
+                startTime: updatedShift.startTime,
+                endTime: updatedShift.endTime,
+                clockInTime: updatedShift.clockInTime,
+                hasClient: !!updatedShift.client,
+            });
+
             setShift(updatedShift);
             Alert.alert('Success', 'Clocked in successfully!');
         } catch (error: any) {
@@ -211,10 +228,35 @@ export default function ShiftDetailScreen() {
     const endTime = shift.endTime ? new Date(shift.endTime) : null;
 
     if (!startTime || !endTime || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        // Log detailed information about the invalid data
+        console.error('❌ Invalid shift data detected:', {
+            shiftId: shift.id,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            startTimeValid: startTime ? !isNaN(startTime.getTime()) : false,
+            endTimeValid: endTime ? !isNaN(endTime.getTime()) : false,
+            hasClient: !!shift.client,
+        });
+
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <Text>Invalid shift data</Text>
+                    <Text style={styles.errorText}>Invalid shift data</Text>
+                    <Text style={styles.errorDetail}>
+                        {!shift.startTime && 'Missing start time. '}
+                        {!shift.endTime && 'Missing end time. '}
+                        {shift.startTime && startTime && isNaN(startTime.getTime()) && 'Invalid start time format. '}
+                        {shift.endTime && endTime && isNaN(endTime.getTime()) && 'Invalid end time format. '}
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => {
+                            router.back();
+                            setTimeout(() => router.push(`/shift/${shift.id}`), 100);
+                        }}
+                    >
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
         );
@@ -496,6 +538,30 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 24,
+    },
+    errorText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#EF4444',
+        marginBottom: 8,
+    },
+    errorDetail: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    retryButton: {
+        backgroundColor: '#4F46E5',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
     header: {
         flexDirection: 'row',

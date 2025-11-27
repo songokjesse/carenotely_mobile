@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -11,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { notesService } from '../lib/notes';
 
 interface ProgressNoteFormProps {
     visible: boolean;
@@ -41,6 +43,24 @@ export function ProgressNoteForm({ visible, onClose, onSubmit }: ProgressNoteFor
     const [behavioursFlag, setBehavioursFlag] = useState(false);
     const [medicationFlag, setMedicationFlag] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRephrasing, setIsRephrasing] = useState(false);
+
+    const handleRephrase = async () => {
+        if (!noteText.trim()) {
+            Alert.alert('Required', 'Please enter some text to rephrase');
+            return;
+        }
+
+        setIsRephrasing(true);
+        try {
+            const rephrased = await notesService.rephraseNote(noteText);
+            setNoteText(rephrased);
+        } catch (error: any) {
+            Alert.alert('Error', 'Failed to rephrase text. Please try again.');
+        } finally {
+            setIsRephrasing(false);
+        }
+    };
 
     const handleSubmit = async () => {
         if (!noteText.trim()) {
@@ -85,7 +105,23 @@ export function ProgressNoteForm({ visible, onClose, onSubmit }: ProgressNoteFor
                 <ScrollView style={styles.content}>
                     {/* Note Text */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Note *</Text>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.label}>Note *</Text>
+                            <TouchableOpacity
+                                style={styles.rephraseButton}
+                                onPress={handleRephrase}
+                                disabled={isRephrasing || !noteText.trim()}
+                            >
+                                {isRephrasing ? (
+                                    <ActivityIndicator size="small" color="#4F46E5" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="sparkles" size={16} color="#4F46E5" />
+                                        <Text style={styles.rephraseText}>Rephrase with AI</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                         <TextInput
                             style={styles.textArea}
                             placeholder="Describe activities, observations, client interactions..."
@@ -210,11 +246,30 @@ const styles = StyleSheet.create({
     section: {
         marginBottom: 24,
     },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
     label: {
         fontSize: 14,
         fontWeight: '600',
         color: '#374151',
-        marginBottom: 8,
+    },
+    rephraseButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 12,
+    },
+    rephraseText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4F46E5',
     },
     textArea: {
         backgroundColor: 'white',
