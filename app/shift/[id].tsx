@@ -128,18 +128,11 @@ export default function ShiftDetailScreen() {
         setIsClocking(true);
         try {
             const location = await locationService.getCurrentLocation();
-            const updatedShift = await shiftService.clockIn(shift.id, location);
+            await shiftService.clockIn(shift.id, location);
 
-            // Diagnostic logging to identify data issues
-            console.log('📍 Clock-in response:', {
-                id: updatedShift.id,
-                startTime: updatedShift.startTime,
-                endTime: updatedShift.endTime,
-                clockInTime: updatedShift.clockInTime,
-                hasClient: !!updatedShift.client,
-            });
-
-            setShift(updatedShift);
+            // After successful clock-in, reload the entire shift details
+            await loadShift(); 
+            
             Alert.alert('Success', 'Clocked in successfully!');
         } catch (error: any) {
             Alert.alert('Clock In Failed', error.message || 'An error occurred');
