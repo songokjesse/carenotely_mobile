@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Shift } from '../lib/types';
+import { isSILShift, Shift } from '../lib/types';
 
 interface ShiftCardProps {
     shift: Shift;
@@ -50,7 +50,7 @@ export function ShiftCard({ shift, onPress }: ShiftCardProps) {
                     </View>
                 </View>
 
-                <Text style={styles.clientName}>{shift.client.name}</Text>
+                <Text style={styles.clientName}>{isSILShift(shift) ? shift.site.name : shift.client?.name || 'Unknown'}</Text>
 
                 <View style={styles.row}>
                     <Ionicons name="location-outline" size={16} color="#6B7280" />

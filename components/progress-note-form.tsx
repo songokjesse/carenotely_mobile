@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { notesService } from '../lib/notes';
+import { Shift } from '../lib/types';
 
 interface ProgressNoteFormProps {
     visible: boolean;
@@ -24,6 +25,7 @@ interface ProgressNoteFormProps {
         behavioursFlag?: boolean;
         medicationFlag?: boolean;
     }) => Promise<void>;
+    shift?: Shift;
 }
 
 const MOOD_OPTIONS = [
@@ -36,7 +38,7 @@ const MOOD_OPTIONS = [
     { value: 'SAD', label: '😢 Sad' },
 ];
 
-export function ProgressNoteForm({ visible, onClose, onSubmit }: ProgressNoteFormProps) {
+export function ProgressNoteForm({ visible, onClose, onSubmit, shift }: ProgressNoteFormProps) {
     const [noteText, setNoteText] = useState('');
     const [mood, setMood] = useState('');
     const [incidentFlag, setIncidentFlag] = useState(false);

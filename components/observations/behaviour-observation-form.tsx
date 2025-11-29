@@ -10,15 +10,22 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Shift } from '../../lib/types';
 import { TimePicker } from '../time-picker';
 
 interface BehaviourObservationFormProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (data: any) => Promise<void>;
+    shift?: Shift;
 }
 
-export function BehaviourObservationForm({ visible, onClose, onSubmit }: BehaviourObservationFormProps) {
+export function BehaviourObservationForm({
+    visible,
+    onClose,
+    onSubmit,
+    shift,
+}: BehaviourObservationFormProps) {
     const [time, setTime] = useState(new Date());
     const [mood, setMood] = useState<string>('');
     const [incidents, setIncidents] = useState<string[]>([]);
