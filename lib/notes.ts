@@ -15,6 +15,7 @@ interface CreateNoteData {
     incidentFlag?: boolean;
     behavioursFlag?: boolean;
     medicationFlag?: boolean;
+    clientId?: string;
 }
 
 export const notesService = {

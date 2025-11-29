@@ -16,9 +16,25 @@ export interface Client {
     enabledModules?: ModuleType[];
 }
 
+export interface Resident {
+    id: string;
+    name: string;
+    ndisNumber?: string;
+    dateOfBirth?: string;
+    enabledModules?: ModuleType[];
+}
+
+export interface Site {
+    id: string;
+    name: string;
+    address: string;
+    residents: Resident[];
+}
+
 export interface Shift {
     id: string;
-    client: Client;
+    client?: Client; // Optional for SIL shifts
+    site?: Site; // For SIL shifts with multiple residents
     startTime: string; // ISO string
     endTime: string; // ISO string
     status: ShiftStatus;
@@ -28,6 +44,14 @@ export interface Shift {
     observationsCount?: number;
     clockInTime?: string;
     clockOutTime?: string;
+}
+
+/**
+ * Type guard to check if a shift is a SIL (Supported Independent Living) shift
+ * SIL shifts have a site with multiple residents instead of a single client
+ */
+export function isSILShift(shift: Shift): shift is Shift & { site: Site } {
+    return shift.site !== undefined && shift.site !== null;
 }
 
 export interface ProgressNote {

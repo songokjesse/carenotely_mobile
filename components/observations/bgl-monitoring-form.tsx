@@ -10,15 +10,17 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Shift } from '../../lib/types';
 import { TimePicker } from '../time-picker';
 
 interface BGLMonitoringFormProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (data: any) => Promise<void>;
+    shift?: Shift;
 }
 
-export function BGLMonitoringForm({ visible, onClose, onSubmit }: BGLMonitoringFormProps) {
+export function BGLMonitoringForm({ visible, onClose, onSubmit, shift }: BGLMonitoringFormProps) {
     const [time, setTime] = useState(new Date());
     const [reading, setReading] = useState('');
     const [context, setContext] = useState<string>('');

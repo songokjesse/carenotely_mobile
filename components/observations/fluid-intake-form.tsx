@@ -10,15 +10,17 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Shift } from '../../lib/types';
 import { TimePicker } from '../time-picker';
 
 interface FluidIntakeFormProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (data: any) => Promise<void>;
+    shift?: Shift;
 }
 
-export function FluidIntakeForm({ visible, onClose, onSubmit }: FluidIntakeFormProps) {
+export function FluidIntakeForm({ visible, onClose, onSubmit, shift }: FluidIntakeFormProps) {
     const [time, setTime] = useState(new Date());
     const [amount, setAmount] = useState('');
     const [fluidType, setFluidType] = useState<string>('');

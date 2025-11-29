@@ -23,13 +23,14 @@ import { FluidIntakeForm } from '../../components/observations/fluid-intake-form
 import { SeizureMonitoringForm } from '../../components/observations/seizure-monitoring-form';
 import { ProgressNoteForm } from '../../components/progress-note-form';
 import { ProgressNotesTimeline } from '../../components/progress-notes-timeline';
+import { ResidentSelector } from '../../components/resident-selector';
 import { locationService } from '../../lib/location';
 import { notesService } from '../../lib/notes';
 import { getEnabledModules, ObservationModuleConfig } from '../../lib/observation-modules';
 import { observationsService } from '../../lib/observations';
 import { shiftUtils } from '../../lib/shift-utils';
 import { shiftService } from '../../lib/shifts';
-import { Observation, ProgressNote, Shift } from '../../lib/types';
+import { isSILShift, Observation, ProgressNote, Shift } from '../../lib/types';
 
 const initialLayout = { width: Dimensions.get('window').width };
 
@@ -43,6 +44,7 @@ export default function ShiftDetailScreen() {
     const [isClocking, setIsClocking] = useState(false);
     const [isLoadingObservations, setIsLoadingObservations] = useState(false);
     const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+    const [selectedResidentId, setSelectedResidentId] = useState<string>();
 
     // Tab state
     const [index, setIndex] = useState(0);
@@ -192,8 +194,19 @@ export default function ShiftDetailScreen() {
 
     const handleObservationSubmit = async (data: any) => {
         if (!shift) return;
+
+        if (isSILShift(shift)) {
+            if (!selectedResidentId) {
+                Alert.alert('Select Resident', 'Please select a resident first.');
+                setSelectedModule(null); // Close form
+                return;
+            }
+            data.clientId = selectedResidentId;
+        }
+
         await observationsService.createObservation(shift.id, data);
         await loadObservations();
+        setSelectedModule(null); // Close form
     };
 
     const handleModulePress = (module: ObservationModuleConfig) => {
@@ -206,8 +219,18 @@ export default function ShiftDetailScreen() {
 
     const handleNoteSubmit = async (data: any) => {
         if (!shift) return;
+
+        if (isSILShift(shift)) {
+            if (!selectedResidentId) {
+                Alert.alert('Select Resident', 'Please select a resident first.');
+                return;
+            }
+            data.clientId = selectedResidentId;
+        }
+
         await notesService.createProgressNote(shift.id, data);
         await loadProgressNotes();
+        setShowNoteForm(false);
     };
 
     if (isLoading) {
@@ -266,7 +289,13 @@ export default function ShiftDetailScreen() {
     const duration = differenceInHours(endTime, startTime);
     const clockInCheck = shiftUtils.canClockIn(shift);
     const clockOutCheck = shiftUtils.canClockOut(shift);
-    const enabledModules = getEnabledModules(shift.client.enabledModules);
+    const enabledModules = isSILShift(shift) && selectedResidentId
+        ? getEnabledModules(
+            shift.site.residents.find(r => r.id === selectedResidentId)?.enabledModules
+        )
+        : shift.client
+            ? getEnabledModules(shift.client.enabledModules)
+            : [];
 
     // Tab scenes
     const OverviewRoute = () => (
@@ -287,16 +316,42 @@ export default function ShiftDetailScreen() {
                 </View>
             </View>
 
-            {/* Client Info */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Client</Text>
-                <View style={styles.card}>
-                    <Text style={styles.clientName}>{shift.client.name}</Text>
-                    {shift.client.ndisNumber && (
-                        <Text style={styles.ndisNumber}>NDIS: {shift.client.ndisNumber}</Text>
-                    )}
+            {/* Client/Site Info */}
+            {isSILShift(shift) ? (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Site</Text>
+                    <View style={styles.card}>
+                        <Text style={styles.clientName}>{shift.site.name}</Text>
+                        <Text style={styles.locationText}>{shift.site.address}</Text>
+                        <Text style={styles.residentCount}>
+                            {shift.site.residents.length} residents
+                        </Text>
+                    </View>
                 </View>
-            </View>
+            ) : shift.client ? (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Client</Text>
+                    <View style={styles.card}>
+                        <Text style={styles.clientName}>{shift.client.name}</Text>
+                        {shift.client.ndisNumber && (
+                            <Text style={styles.ndisNumber}>
+                                NDIS: {shift.client.ndisNumber}
+                            </Text>
+                        )}
+                    </View>
+                </View>
+            ) : null}
+
+            {isSILShift(shift) && (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Residents</Text>
+                    <ResidentSelector
+                        residents={shift.site.residents}
+                        selectedResidentId={selectedResidentId}
+                        onSelect={setSelectedResidentId}
+                    />
+                </View>
+            )}
 
             {/* Location */}
             <View style={styles.section}>
@@ -488,6 +543,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                    shift={shift}
                 />
             )}
             {selectedModule?.type === 'FLUID_INTAKE' && (
@@ -495,6 +551,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                    shift={shift}
                 />
             )}
             {selectedModule?.type === 'BGL_MONITORING' && (
@@ -502,6 +559,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                    shift={shift}
                 />
             )}
             {selectedModule?.type === 'SEIZURE_MONITORING' && (
@@ -509,6 +567,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                    shift={shift}
                 />
             )}
             {selectedModule?.type === 'BEHAVIOUR_OBSERVATION' && (
@@ -516,6 +575,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setSelectedModule(null)}
                     onSubmit={handleObservationSubmit}
+                    shift={shift}
                 />
             )}
             {showNoteForm && (
@@ -523,6 +583,7 @@ export default function ShiftDetailScreen() {
                     visible={true}
                     onClose={() => setShowNoteForm(false)}
                     onSubmit={handleNoteSubmit}
+                    shift={shift}
                 />
             )}
         </SafeAreaView>
@@ -674,6 +735,11 @@ const styles = StyleSheet.create({
     ndisNumber: {
         fontSize: 14,
         color: '#6B7280',
+    },
+    residentCount: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginTop: 4,
     },
     row: {
         flexDirection: 'row',
