@@ -10,15 +10,22 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Shift } from '../../lib/types';
 import { TimePicker } from '../time-picker';
 
 interface BowelMonitoringFormProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (data: any) => Promise<void>;
+    shift?: Shift;
 }
 
-export function BowelMonitoringForm({ visible, onClose, onSubmit }: BowelMonitoringFormProps) {
+export function BowelMonitoringForm({
+    visible,
+    onClose,
+    onSubmit,
+    shift,
+}: BowelMonitoringFormProps) {
     const [time, setTime] = useState(new Date());
     const [consistency, setConsistency] = useState<string>('');
     const [color, setColor] = useState<string>('');

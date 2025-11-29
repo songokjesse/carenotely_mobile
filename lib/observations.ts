@@ -12,7 +12,8 @@ interface ObservationResponse {
 interface CreateObservationData {
     moduleType: ModuleType;
     data: any;
-    recordedAt: string; // ISO string
+    recordedAt?: string;
+    clientId?: string;
 }
 
 export const observationsService = {
