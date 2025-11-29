@@ -8,12 +8,19 @@ export type ModuleType =
     | 'BGL_MONITORING';
 
 export interface Client {
+
     id: string;
+
     name: string;
+
     ndisNumber?: string;
+
     dateOfBirth?: string;
+
     notes?: string;
+
     enabledModules?: ModuleType[];
+
 }
 
 export interface Resident {
